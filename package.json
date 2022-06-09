@@ -27,6 +27,7 @@
     "react-hook-form": "^7.31.3",
     "react-native": "0.68.2",
     "react-native-app-intro-slider": "^4.0.4",
+    "react-native-elements": "^3.4.2",
     "react-native-masked-text": "^1.13.0",
     "react-native-paper": "^4.12.1",
     "react-native-safe-area-context": "4.2.4",

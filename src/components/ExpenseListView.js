@@ -7,7 +7,6 @@ import {
 	TouchableOpacity,
 	TouchableHighlight,
 } from 'react-native';
-// import { Button } from 'react-native-elements';
 import Checkbox from 'expo-checkbox';
 import { ButtonIcon } from '../components/Icons';
 import { ActivityIndicator,	Card, Button } from 'react-native-paper';
@@ -21,7 +20,6 @@ const WINDOW_WIDTH = Dimensions.get('window').width;
 const ExpenseListView = ({ 
 	expenses, 
 	currentMonth, 
-	errorMessage, 
 	onUpdate, 
 	onDelete, 
 	onDeleteMany,
@@ -89,7 +87,6 @@ const ExpenseListView = ({
 	};
 
 	const toggleMultiselect = (reset = true) => {
-		console.log('TOGGLE MUTISELECT');
 		const enabled = !multiSelectEnabled;
 		setMultiSelectEnabled(enabled);
 		if (reset && !enabled) resetSelection();
@@ -200,7 +197,7 @@ const ExpenseListView = ({
 				onPress={() => viewDetails(rowMap, data.item._id)}
 			>
 				<MaterialIcons
-					name="remove-red-eye"
+					name="mode-edit"
 					size={30}
 					color="white"
 				/>
@@ -215,40 +212,32 @@ const ExpenseListView = ({
 	} else if (items && items.length) {
 		return (
 			<View style={styles.container}>
-				{errorMessage ? 
-					<View style={styles.helpTextContainer}>
-						<Text style={styles.errorText}>{errorMessage} Please try again later...</Text>
-					</View> 
-					:
-					<>
-						<SwipeListView
-							data={items}
-							keyExtractor={itemToId}
-							renderItem={renderItem}
-							renderHiddenItem={renderHiddenItem}
-							leftOpenValue={95}
-							rightOpenValue={-150}
-							previewRowKey={previewRow}
-							previewOpenValue={-40}
-							previewOpenDelay={2000}
-						/>
-						{!multiSelectEnabled ? null :  
-							<Button
-								buttonStyle={styles.actionButton}
-								raised
-								onPress={deleteMany}
-								icon={
-									<ButtonIcon
-										type="material"
-										name="delete"
-										size={40}
-										position="center"
-										color={Constants.warnColor}
-									/>
-								}
+				<SwipeListView
+					data={items}
+					keyExtractor={itemToId}
+					renderItem={renderItem}
+					renderHiddenItem={renderHiddenItem}
+					leftOpenValue={95}
+					rightOpenValue={-150}
+					previewRowKey={previewRow}
+					previewOpenValue={-40}
+					previewOpenDelay={2000}
+				/>
+				{!multiSelectEnabled ? null :  
+					<Button
+						buttonStyle={styles.actionButton}
+						raised
+						onPress={deleteMany}
+						icon={
+							<ButtonIcon
+								type="material"
+								name="delete"
+								size={40}
+								position="center"
+								color={Constants.warnColor}
 							/>
 						}
-					</>
+					/>
 				}
 			</View>
 		);

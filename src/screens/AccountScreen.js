@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { CommonActions } from '@react-navigation/native';
 import { ScrollView, Platform, StyleSheet, Text, Image, TouchableOpacity, View } from 'react-native';
-import { Button } from 'react-native-paper';
+import { Button } from 'react-native-elements';
 import * as WebBrowser from 'expo-web-browser';
 import { Context as AuthContext } from '../context/AuthContext';
 

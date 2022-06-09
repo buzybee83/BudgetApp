@@ -15,9 +15,13 @@ const incomeReducer = (prevState, action) => {
 			if (prevState.income) {
 				return { ...prevState, errorMessage: action.payload };
 			}
-			else return { ...prevState, errorMessage: action.payload, income: [] };
+			else return { ...prevState, errorMessage: action.payload };
+		case 'HAS_LOADING_ERROR':
+			return { ...prevState, loadingErrorMessage: action.payload, income: [] };
+		case 'CLEAR_LOADING_ERROR':
+			return { ...prevState, loadingErrorMessage: null };
 		case 'CLEAR_ERROR':
-			return { ...prevState, errorMessage: '' };
+			return { ...prevState, errorMessage: null };
 		default:
 			return prevState;
 	}
@@ -85,7 +89,7 @@ const fetchIncome = dispatch => async (month) => {
 	} catch(err) {
 		const errorMssg = 'Something went wrong while trying to retrieve your income for this month.';
 		dispatch({
-			type: 'HAS_ERROR',
+			type: 'HAS_LOADING_ERROR',
 			payload: errorMssg
 		});
  		console.log('###FETCH INCOME ERROR ==== \n', err)
@@ -121,12 +125,25 @@ const deleteIncomeItem = dispatch => async (incomeItem, deleteOccurrences) => {
 	}
 };
 
+const clearLoadingError = dispatch => () => {
+	dispatch({ type: 'CLEAR_LOADING_ERROR' });
+};
+
 const clearError = dispatch => () => {
 	dispatch({ type: 'CLEAR_ERROR' });
 };
 
 export const { Provider, Context } = createDataContext(
 	incomeReducer,
-	{ createIncome, fetchIncome, fetchIncomeById, updateIncome, updateIncomeItem, deleteIncomeItem, clearError },
-	{ income: null, lastUpdated: null, errorMessage: '' }
+	{ 
+		createIncome, 
+		fetchIncome, 
+		fetchIncomeById, 
+		updateIncome, 
+		updateIncomeItem, 
+		deleteIncomeItem, 
+		clearLoadingError, 
+		clearError 
+	},
+	{ income: null, lastUpdated: null, errorMessage: '', loadingErrorMessage: '' }
 )

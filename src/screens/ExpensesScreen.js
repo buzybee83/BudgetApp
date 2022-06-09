@@ -9,11 +9,11 @@ import {
 import {
 	ActivityIndicator,
 	Divider,
-	Button
+	Snackbar
 } from 'react-native-paper';
 // import Modal from 'react-native-modal';
 import { MaterialIcons } from '@expo/vector-icons';
-// import { Button } from 'react-native-elements';
+import { Button } from 'react-native-elements';
 import { Constants, DarkTheme } from '../constants/Theme';
 import { Context as ExpenseContext } from '../context/ExpenseContext';
 import { Context as BudgetContext } from '../context/BudgetContext';
@@ -31,6 +31,7 @@ const ExpensesScreen = ({ navigation }) => {
 		updateExpense,
 		deleteExpense,
 		deleteManyExpenses,
+		clearLoadingError,
 		clearError
 	} = useContext(ExpenseContext);
 	const budgetContext = useContext(BudgetContext);
@@ -40,13 +41,20 @@ const ExpensesScreen = ({ navigation }) => {
 	const [modalVisible, setModalVisible] = useState(false);
 	const [monthDetails, setMonthDetails] = useState(null);
 	const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
+	const [toastSate, setToastState] = useState({ 
+		validationMessage: '', 
+		isError: false, 
+		isVisible: false 
+	});  
 
+	const onDismissSnackBar = () => {
+		setToastState({...toastSate, isVisible: false, isError: false });
+		clearError();
+	};
 
 	const refreshExpenseData = React.useCallback(async () => {
 		setListState({ ...listState, isLoading: true });
-
 		if (monthDetails) {
-			if (state.errorMessage) clearError();
 			await fetchExpenses(monthDetails.month);
 		}
 	});
@@ -63,6 +71,9 @@ const ExpensesScreen = ({ navigation }) => {
 
 	useEffect(() => {
 		const unsubscribe = navigation.addListener('focus', async () => {
+			if (state.loadingErrorMessage) {
+				clearLoadingError();
+			}
 			await checkMonthDetails();
 		});
 		return unsubscribe;
@@ -73,14 +84,30 @@ const ExpensesScreen = ({ navigation }) => {
 		setListState({ ...listState, isLoading: true });
 		try {
 			refreshExpenseData();
-			
 		} catch(err) {
 			console.warn(`Error loading Expenses. ${err}`)
 		} finally {
 			setListState({ ...listState, isLoading: false });
+			if (state.errorMessage || state.loadingErrorMessage) {
+				setToastState({
+					isVisible: true, 
+					isError: true,
+					validationMessage: state.errorMessage || state.loadingErrorMessage
+				});
+			}
 			console.log('##refresh EXPENSE END');
 		}
 	}, [monthDetails, state.lastUpdated]);
+
+	useEffect(() => {
+		if (state.errorMessage || state.loadingErrorMessage) {
+			setToastState({
+				isVisible: true, 
+				isError: true,
+				validationMessage: state.errorMessage || state.loadingErrorMessage
+			});
+		}
+	}, [state.errorMessage, state.loadingErrorMessage]);
 
 	const togglePaid = async (id) => {
 		setListState({ ...listState, isSaving: true });
@@ -88,6 +115,11 @@ const ExpensesScreen = ({ navigation }) => {
 		try {
 			updatedItem.isPaid = !updatedItem.isPaid;
 			await updateExpense(updatedItem);
+			setToastState({
+				isVisible: true, 
+				isError: false, 
+				validationMessage: 'Successfully updated expense' 
+			});
 			budgetContext.fetchMonthDetails(monthDetails);
 		} catch (err) {
 			console.warn('ERROR OCCURED IN SAVING EXPENSE - ', err)
@@ -104,19 +136,25 @@ const ExpensesScreen = ({ navigation }) => {
 				isRecurring: data.isRecurring,
 				recurringType: data.recurringType
 			};
-			data.amount = amount = parseFloat(data.amount).toFixed(2);
 			data.dueDay = new Date(new Date(monthDetails.month).setDate(data.dueDay));
+			let mssg = ''
 			if (expenseRef && expenseRef._id) {
 				expenseRef = {
 					...expenseRef,
 					...data
 				};
 				await updateExpense(expenseRef);
-
+				mssg = 'Successfully updated expense';
 			} else {
 				data.budgetId = budgetContext.state.budget._id,
 				await createExpense(data);
+				mssg = 'Successfully created expense';
 			}
+			setToastState({
+				isVisible: true, 
+				isError: false,
+				validationMessage: mssg
+			});
 			budgetContext.fetchMonthDetails(monthDetails);
 		} catch (err) {
 			console.warn('ERROR OCCURED IN SAVING EXPENSE - ', err)
@@ -129,6 +167,11 @@ const ExpensesScreen = ({ navigation }) => {
 	const onDeleteExpense = async (id) => {
 		try {
 			await deleteExpense(id);
+			setToastState({
+				isVisible: true, 
+				isError: false,
+				validationMessage: 'Successfully deleted expense'
+			});
 			budgetContext.fetchMonthDetails(monthDetails);
 		} catch (err) {
 			console.warn(err);
@@ -141,6 +184,11 @@ const ExpensesScreen = ({ navigation }) => {
 
 	const onMultiDeleteExpenses = async (expenseIds) => {
 		await deleteManyExpenses(expenseIds);
+		setToastState({
+			isVisible: true, 
+			isError: false,
+			validationMessage: 'Successfully deleted expenses'
+		});
 		budgetContext.fetchMonthDetails(monthDetails);
 	}
 
@@ -183,7 +231,6 @@ const ExpensesScreen = ({ navigation }) => {
 					<View style={{flex: 8}}>
 						<ExpenseListView 
 							expenses={state.expenses} 
-							errorMessage={state.errorMessage}
 							currentMonth={monthDetails}
 							onMultiSelectEnabled={toggleMultiSelectAction}
 							onUpdate={togglePaid}
@@ -211,11 +258,11 @@ const ExpensesScreen = ({ navigation }) => {
 							<Divider style={{ height: 2 }} />
 							{listState.isSaving ?
 								<ActivityIndicator animating={true} style={{ paddingVertical: 30 }} /> :
-								<ExpenseForm onSubmitForm={onSubmitExpense} expense={expense} onDelete={deleteExpense} />
+								<ExpenseForm onSubmitForm={onSubmitExpense} expense={expense} onDelete={onDeleteExpense} />
 							}
 						</View>
 					</Modal>
-					{ modalVisible || multiSelectEnabled ? null :  
+					{ modalVisible || multiSelectEnabled || state.loadingErrorMessage ? null :  
 						<Button
 							buttonStyle={styles.actionButton}
 							raised
@@ -230,6 +277,21 @@ const ExpensesScreen = ({ navigation }) => {
 							}
 						/>
 					}
+					<Snackbar
+						style={ toastSate.isError ? styles.errorToast : styles.successToast}
+						visible={toastSate.isVisible}
+						onDismiss={onDismissSnackBar}
+						action={{
+							labelStyle: { fontSize: 24 },
+							color: toastSate.isError ? '#fff' : Constants.secondaryColor,
+							icon: 'close',
+							onPress: () => {
+								onDismissSnackBar()
+							},
+						}}
+					>
+						{ toastSate.validationMessage }
+					</Snackbar>
 				</>
 			}
 		</SafeAreaView>
@@ -265,6 +327,15 @@ const styles = StyleSheet.create({
 		fontWeight: Constants.fontWeightMedium,
 		marginBottom: 12,
 		textAlign: "center"
+	},
+	successToast: {
+		backgroundColor: Constants.darkGrey,
+		fontWeight: Constants.fontWeightMedium
+	},
+	errorToast: {
+		backgroundColor: Constants.errorBackground,
+		color: Constants.whiteColor,
+		fontWeight: Constants.fontWeightHeavy
 	}
 });
 

@@ -1,3 +1,4 @@
+{/* <script src="http://localhost:8097"></script> */}
 import { registerRootComponent } from 'expo';
 
 import App from './App';

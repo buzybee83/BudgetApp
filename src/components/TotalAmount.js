@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text } from 'react-native-paper';
+import { Text } from 'react-native-elements';
 
 const TotalAmount = ({ items, value, fieldKey, alignment, textStyle, color, heading, calculateAmount }) => {
     const [total, setTotal] = useState(0.00);

@@ -11,14 +11,13 @@ import { ActivityIndicator,	Card } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SwipeListView } from 'react-native-swipe-list-view';
 import { Constants } from '../constants/Theme';
-import { nth, IncomeType, getMonthLong } from '../services/utilHelper';
+import { nth, getMonthLong } from '../services/utilHelper';
 
 const WINDOW_WIDTH = Dimensions.get('window').width;
 
-const IncomeListView = ({ income, currentMonth, onDelete, onViewDetails, showPreview, errorMessage }) => {
+const IncomeListView = ({ income, currentMonth, onDelete, onViewDetails, showPreview }) => {
 	const [action, setAction] = useState('');
 	const [items, setItems] = useState('');
-	// const [monthName, setMonthName] = useState('');
 	const [loading, setLoading] = useState(true);
 	const [previewRow, setPreviewRow] = useState('0');
 
@@ -41,7 +40,6 @@ const IncomeListView = ({ income, currentMonth, onDelete, onViewDetails, showPre
 			if (day.getDate() > today.getDate() && day.getMonth() >= today.getMonth()) {
 				return 'Expected';
 			} 
-			
 			return 'Received';
 		} else {
 			return 'Expected';
@@ -152,43 +150,31 @@ const IncomeListView = ({ income, currentMonth, onDelete, onViewDetails, showPre
 		return <ActivityIndicator animating={true} style={{ paddingVertical: 65 }}  color="white" />;
 	} else if (items && items.length) {
 		return (
-			<View style={styles.container}>
-				{errorMessage ? 
-					<View style={styles.helpTextContainer}>
-						<Text style={styles.errorText}>{errorMessage} Please try again later...</Text>
-					</View> 
-					:
-					<SwipeListView
-						data={income}
-						keyExtractor={itemToId}
-						renderItem={renderItem}
-						renderHiddenItem={renderHiddenItem}
-						disableRightSwipe={true}
-						rightOpenValue={-150}
-						previewRowKey={previewRow}
-						previewOpenValue={-40}
-						previewOpenDelay={2000}
-					/>
-				}
+			<View style={styles.container}>	
+				<SwipeListView
+					data={income}
+					keyExtractor={itemToId}
+					renderItem={renderItem}
+					renderHiddenItem={renderHiddenItem}
+					disableRightSwipe={true}
+					rightOpenValue={-150}
+					previewRowKey={previewRow}
+					previewOpenValue={-40}
+					previewOpenDelay={2000}
+				/>
 			</View>
 		);
 	} else {
 		return (
-			<Card style={styles.noContentContainer}>
-			{errorMessage ? 
-				<View style={styles.helpTextContainer}>
-					<Text style={styles.errorText}>{errorMessage} Please try again later...</Text>
-				</View>
-				:
-				<>
+			<>
+				<Card style={styles.noContentContainer}>
 					<Text style={styles.noItemsText}>No income found for {getMonthLong(currentMonth?.month)}.</Text>
 					<View style={styles.helpTextContainer}>
 						<MaterialIcons name="info" size={34} color={Constants.primaryColor} />
 						<Text style={styles.helpText}>Start adding your monthly income here by pressing the [+] button bellow.</Text>
 					</View>
-				</>
-			}
-			</Card>
+				</Card>
+			</>
 		)
 	}
 };

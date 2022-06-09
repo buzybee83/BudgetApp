@@ -10,9 +10,10 @@ import {
 import {
 	ActivityIndicator,
 	Divider,
+	Snackbar
 } from 'react-native-paper';
+import { Button } from 'react-native-elements';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Button } from 'react-native-paper';
 import { Constants, DarkTheme } from '../constants/Theme';
 import { Context as IncomeContext } from '../context/IncomeContext';
 import { Context as BudgetContext } from '../context/BudgetContext';
@@ -29,7 +30,9 @@ const IncomeScreen = ({ navigation }) => {
 		createIncome,
 		updateIncome,
 		updateIncomeItem,
-		deleteIncomeItem
+		deleteIncomeItem,
+		clearLoadingError,
+		clearError
 	} = useContext(IncomeContext);
 	const budgetContext = useContext(BudgetContext);
 	const [income, setIncome] = useState(null);
@@ -37,7 +40,17 @@ const IncomeScreen = ({ navigation }) => {
 	const [listState, setListState] = useState({ isLoading: true, isSaving: false });
 	const [modalVisible, setModalVisible] = useState(false);
 	const [currentMonth, setCurrentMonth] = useState(null);
+	const [toastSate, setToastState] = useState({ 
+		validationMessage: '', 
+		isError: false, 
+		isVisible: false 
+	});  
 	
+	const onDismissSnackBar = () => {
+		setToastState({...toastSate, isVisible: false, isError: false });
+		clearError();
+	};
+
 	const refreshIncomeData = React.useCallback(async () => {
 		if (currentMonth) {
 			await fetchIncome(currentMonth.month);
@@ -49,15 +62,18 @@ const IncomeScreen = ({ navigation }) => {
 		if (!currentMonth || month._id !== currentMonth._id) {
 			state.income = [];
 			setCurrentMonth(month);
+			const headerTitle = getMonthLong(month.month, 'Income');
+			navigation.setOptions({ headerTitle });
 		}
-		const headerTitle = getMonthLong(month.month, 'Income');
-		navigation.setOptions({ headerTitle });
 	};
 
 	useEffect(() => {
 		setListState({ ...listState, isLoading: true })
-		const unsubscribe = navigation.addListener('focus', async () => {
-			checkCurrentMonth(currentMonth,'Income', navigation, setCurrentMonth);
+		const unsubscribe = navigation.addListener('focus', () => {
+			if (state.loadingErrorMessage) {
+				clearLoadingError();
+			}
+			checkCurrentMonth(currentMonth, 'Income', navigation, setCurrentMonth);
 		});
 		return unsubscribe;
 	}, [navigation]);
@@ -71,9 +87,26 @@ const IncomeScreen = ({ navigation }) => {
 			console.warn(`Error loading Income. ${err}`)
 		} finally {
 			setListState({ ...listState, isLoading: false });
+			if (state.errorMessage || state.loadingErrorMessage) {
+				setToastState({
+					isVisible: true, 
+					isError: true,
+					validationMessage: state.errorMessage || state.loadingErrorMessage
+				});
+			}
 			console.log('##refresh INCOME DONE');
 		}
 	}, [currentMonth, state.lastUpdated]);
+
+	useEffect(() => {
+		if (state.errorMessage || state.loadingErrorMessage) {
+			setToastState({
+				isVisible: true, 
+				isError: true,
+				validationMessage: state.errorMessage || state.loadingErrorMessage
+			});
+		}
+	}, [state.errorMessage, state.loadingErrorMessage]);
 
 	const actionRequired = (itemToDelete) => {
 		Alert.alert(
@@ -106,32 +139,43 @@ const IncomeScreen = ({ navigation }) => {
 
 	const onSubmitIncome = async (data, incomeRef, saveOption) => {
 		try {
-			data.amount = parseFloat(data.amount).toFixed(2);
+			// data.amount = parseFloat(data.amount).toFixed(2);
+			let statusMsg = '';
 			data.incomeFrequency = {
 				frequencyType: data.frequencyType,
 				frequency: data.frequency
 			}
+			data.expectedDate = new Date(new Date(currentMonth.month).setDate(data.expectedDate));
+			console.log('NEW income= ', data)
 			if (incomeRef && incomeRef._id) {
 				incomeRef = {
 					...incomeRef,
 					...data
 				};
-				
+
 				saveOption = saveOption?.value;
 				if (saveOption) {
 					incomeRef._id = incomeRef.incomeId ? incomeRef.incomeId : incomeRef._id;
 					await updateIncome(incomeRef, saveOption);
+					statusMsg = 'Successfully updated income series';
 				} else {
 					await updateIncomeItem(incomeRef);
+					statusMsg = 'Successfully updated income';
 				}
 			} else {
 				data.isAutomated = data.frequencyType !== 'Misc/One time' ? true : false;
 				await createIncome(data);
+				statusMsg = `Successfully created income ${data.isAutomated ? 'series': ''}`;
 			}
+			setToastState({
+				isVisible: true, 
+				isError: false,
+				validationMessage: statusMsg
+			});
 			budgetContext.fetchMonthDetails(currentMonth);
 		} catch (err) {
 			Alert.alert(`Oops, something went wrong. Error: ${err}`);
-			console.log(`ERROR OCCURED IN ${incomeRef ? 'SAVING':'CREATING'} INCOME => `, err)
+			console.log(`ERROR OCCURED IN ${incomeRef ? 'SAVING' : 'CREATING'} INCOME => `, err)
 		} finally {
 			hideModal();
 		}
@@ -148,6 +192,12 @@ const IncomeScreen = ({ navigation }) => {
 	const deleteIncome = async (itemToDelete, deleteOccurrences) => {
 		try {
 			await deleteIncomeItem(itemToDelete, deleteOccurrences);
+			console.log(deleteOccurrences)
+			setToastState({
+				isVisible: true, 
+				isError: false,
+				validationMessage: `Successfully deleted income ${deleteOccurrences == 'all' ? 'series' : ''}`
+			});
 			budgetContext.fetchMonthDetails(currentMonth);
 		} catch (err) {
 			console.warn(err);
@@ -180,11 +230,11 @@ const IncomeScreen = ({ navigation }) => {
 				<ActivityIndicator animating={true} style={{ flex: 1 }} color={Constants.primaryColor} /> :
 				<>
 					<View style={{ flex: 1, justifyContent: 'center' }}>
-						<TotalAmount 
-							items={state.income} 
-							fieldKey="amount" 
+						<TotalAmount
+							items={state.income}
+							fieldKey="amount"
 							calculateAmount={true}
-							color={Constants.successColor} 
+							color={Constants.successColor}
 							heading={true}
 							alignment="center"
 						/>
@@ -192,14 +242,13 @@ const IncomeScreen = ({ navigation }) => {
 					<View style={{ flex: 8 }}>
 						<IncomeListView
 							income={state.income}
-							errorMessage={state.errorMessage}
 							currentMonth={currentMonth}
 							onDelete={onDelete}
 							onViewDetails={editIncome}
 							showPreview={budgetContext.state.budget?.settings.showPreview}
 						/>
 					</View>
-					
+
 					<Modal
 						visible={modalVisible}
 						animationType="slide"
@@ -221,15 +270,14 @@ const IncomeScreen = ({ navigation }) => {
 								<ActivityIndicator animating={true} style={{ paddingVertical: 30 }} /> :
 								<IncomeForm
 									onSubmitForm={onSubmitIncome}
-									item={income}
-									currentMonth={currentMonth}
+									income={income}
 									onDelete={onDelete}
 									settings={budgetContext.state.budget?.settings}
 								/>
 							}
 						</View>
 					</Modal>
-					{ modalVisible || state.errorMessage ? null :
+					{modalVisible || state.loadingErrorMessage ? null :
 						<Button
 							buttonStyle={styles.actionButton}
 							raised
@@ -243,6 +291,21 @@ const IncomeScreen = ({ navigation }) => {
 							}
 						/>
 					}
+					<Snackbar
+						style={ toastSate.isError ? styles.errorToast : styles.successToast}
+						visible={toastSate.isVisible}
+						onDismiss={onDismissSnackBar}
+						action={{
+							labelStyle: { fontSize: 24 },
+							color: toastSate.isError ? '#fff' : Constants.secondaryColor,
+							icon: 'close',
+							onPress: () => {
+								onDismissSnackBar()
+							},
+						}}
+					>
+						{ toastSate.validationMessage }
+					</Snackbar>
 				</>
 			}
 		</SafeAreaView>

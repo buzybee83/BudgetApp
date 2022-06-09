@@ -6,33 +6,47 @@ import {
     Keyboard, 
     TouchableOpacity,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker'
+import { Picker } from '@react-native-picker/picker';
+import { MaskService } from 'react-native-masked-text';
 import { useForm, Controller } from "react-hook-form";
 import { TextInput, Button, Caption, Text } from 'react-native-paper';
 import { Constants } from '../constants/Theme';
 import Spacer from '../components/Spacer';
-import RNDateTimePicker from '@react-native-community/datetimepicker';
-import { IncomeType } from '../services/utilHelper';
+import { IncomeType, constructDaysInMonth, nth } from '../services/utilHelper';
 
-const IncomeForm = ({ onSubmitForm, onDelete, item, currentMonth, settings }) => {
-    const { control, handleSubmit, formState, errors, watch } = useForm({
+const IncomeForm = ({ onSubmitForm, onDelete, income, settings }) => {
+    const { control, handleSubmit, formState, watch } = useForm({
         mode: 'onChange',
+        defaultValues: {
+            ...income,
+            frequency: 'Monthly',
+            frequencyType: 'Paycheck',
+            expectedDate: income ? new Date(income.expectedDate).getDate().toString() : '',
+            frmtAmount: income ? MaskService.toMask('money', (income.amount), {
+                unit: '$',
+                separator: '.',
+                delimiter: ','
+            }) : ''
+        }
     });
-    const watchFrequencyType = watch('frequencyType', (item ? (item.incomeFrequency ? item.incomeFrequency.frequencyType : 'Misc/One time') : 'Paycheck'));
-    const monthStart = new Date(new Date(currentMonth.month).setDate(1));
-    const monthEnd = new Date(new Date(monthStart.getFullYear(), monthStart.getMonth()+1, 0));
-    const { isDirty, isSubmitted, isValidating } = formState;
-    
+    const watchFrequencyType = watch('frequencyType', 'Paycheck');
+    const { errors, isDirty, isSubmitted, isValid, isValidating } = formState;
+    const daysInMonth = constructDaysInMonth();
+
     const onSubmit = (incomeData) => {
-        if (isDirty && !Object.keys(errors).length) {
-            if (item && item.incomeId) {
+        if (isDirty && isValid) {
+            if (income && income.incomeId) {
                 if (!propagationOptions[propagationSelection]) {
                     return;
                 }
             } 
-            if (!item && !incomeData.frequencyType == 'Misc/One time') incomeData.isAutomated = false;
+            incomeData.amount = MaskService.toRawValue('money', (incomeData.frmtAmount), {
+                separator: '.',
+                delimiter: ','
+            });
+            if (!income && !incomeData.frequencyType == 'Misc/One time') incomeData.isAutomated = false;
             
-            onSubmitForm(incomeData, item, propagationOptions[propagationSelection]);
+            onSubmitForm(incomeData, income, propagationOptions[propagationSelection]);
         }
     };
 
@@ -47,8 +61,9 @@ const IncomeForm = ({ onSubmitForm, onDelete, item, currentMonth, settings }) =>
     }
 
     const formatDate = (date) => {
-        date = new Date(date);
-        return new Intl.DateTimeFormat('en-US', { dateStyle: 'full'}).format(date);
+        let fmtDate = new Date(date);
+        console.log('fmtDate==', date)
+        return new Intl.DateTimeFormat('en-US', { dateStyle: 'full'}).format(fmtDate);
     }
 
     const getPaydayTitle = (date) => {
@@ -76,24 +91,23 @@ const IncomeForm = ({ onSubmitForm, onDelete, item, currentMonth, settings }) =>
             </View>
         );
     }
-
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View style={styles.formContainer}>
                 <View>
                     <Spacer size={1} />
-                    { item &&
+                    { income &&
                         <>
                             <View style={{ paddingBottom: 4 }}>
-                                <Button>{IncomeType[item.incomeType]}</Button>
+                                <Button>{IncomeType[income.incomeType]}</Button>
                             </View>
                             { (!propagationSelection) &&
                                 <View>
-                                    <Text style={[styles.formLabel, styles.labelCenter]}>Date {getPaydayTitle(item.expectedDate)} </Text>
-                                    <Button>{formatDate(item.expectedDate)}</Button>
+                                    <Text style={[styles.formLabel, styles.labelCenter]}>Date {getPaydayTitle(income.expectedDate)} </Text>
+                                    <Button>{formatDate(income.expectedDate)}</Button>
                                 </View>
                             }
-                            { item.incomeId &&
+                            { income.incomeId &&
                                 <View style={{ flexDirection: 'column', paddingBottom: 24, paddingTop: 20  }}>
                                     <Text style={styles.formLabel}> Apply changes to future occurrances? </Text>
                                     <ButtonGroup/>
@@ -106,56 +120,58 @@ const IncomeForm = ({ onSubmitForm, onDelete, item, currentMonth, settings }) =>
                     }
                     <Controller
                         control={control}
-                        render={({ onChange, value, ref }) => (
+                        render={({ field: { onChange, onBlur, value } }) => (
                             <TextInput
                                 label="Description"
                                 mode="outlined"
-                                inputRef={ref}
                                 onChangeText={value => onChange(value)}
                                 value={value}
                             />
                         )}
                         name="description"
                         rules={{ required: true }}
-                        defaultValue={item ? item.description : ""}
                     />
-                    {errors.description && <Text style={styles.hasError}>This is required.</Text>}
-                    {!errors.description && <Spacer size={1} />}
+                    { errors.description && <Text style={styles.hasError}>Description is required.</Text>}
+                    { !errors.description && <Spacer size={1} />}
                     <Controller
                         control={control}
-                        render={({ onChange, value, ref }) => (
+                        render={({ field: { onChange, value } }) => (
                             <TextInput
                                 label="Amount"
                                 mode="outlined"
                                 keyboardType="numeric"
-                                inputRef={ref}
-                                onChangeText={value => onChange(value)}
-                                value={value}
+                                onChangeText={value => value ? onChange(MaskService.toMask('money', (value), {
+                                    unit: '$',
+                                    separator: '.',
+                                    delimiter: ','
+                                })) : onChange(value)}
+                                value={value ? MaskService.toMask('money', (value), {
+                                    unit: '$',
+                                    separator: '.',
+                                    delimiter: ','
+                                }) : ''}
                             />
                         )}
-                        rules={{ required: true, pattern: /^[0-9]+(\.\d{1,2})?$/ }}
-                        name="amount"
-                        defaultValue={item ? item.amount.toFixed(2).toString() : ""}
+                        rules={{ required: true }}
+                        name="frmtAmount"
                     />
-                    { errors.amount && errors.amount.type == 'required' &&
-                        <Text style={styles.hasError}>This is required.</Text>
-                    }
-                    { errors.amount && errors.amount.type == 'pattern' && !isValidating &&
-                        <Text style={styles.hasError}>Must be a valid number and up to 2 decimal places.</Text>
+                    { errors.frmtAmount && errors.frmtAmount.type == 'required' &&
+                        <Text style={styles.hasError}>Amount is required.</Text>
                     }
                     
-                    { !item &&
+                    { !income &&
                         <>
                             <View style={styles.fieldContainer}>
-                                <View style={{ flex: 2, justifyContent: 'flex-end' }}>
+                                <View style={{ flex: 2, justifyContent: 'center' }}>
                                     <Text style={[styles.formLabel, { marginTop: 12 }]}>Type of Income </Text>
                                 </View>
                                 <Controller
                                     control={control}
-                                    render={({ onChange, value }) => (
+                                    render={({ field: { onChange, value } }) => (
                                         <Picker
                                             value={value}
                                             type="outlined"
+                                            mode="dropdown"
                                             style={styles.pickerContainer}
                                             itemStyle={styles.pickerItem}
                                             selectedValue={value}
@@ -167,7 +183,6 @@ const IncomeForm = ({ onSubmitForm, onDelete, item, currentMonth, settings }) =>
                                         </Picker>
                                     )}
                                     name="frequencyType"
-                                    defaultValue={"Paycheck"}
                                 />
                             </View>
                             {watchFrequencyType == 'Paycheck' &&
@@ -179,15 +194,15 @@ const IncomeForm = ({ onSubmitForm, onDelete, item, currentMonth, settings }) =>
                         </>
                     }
 
-                    { watchFrequencyType == 'Recurring' &&
+                    { !income && watchFrequencyType == 'Recurring' &&
                         <>
                             <View style={styles.fieldContainer}>
-                                <View style={{ flex: 2, justifyContent: 'flex-end' }}>
+                                <View style={{ flex: 2, justifyContent: 'center' }}>
                                     <Text style={[styles.formLabel, { paddingTop: 12 }]}>Frequency</Text>
                                 </View>
                                 <Controller
                                     control={control}
-                                    render={({ onChange, value }) => (
+                                    render={({ field: { onChange, value } }) => (
                                         <Picker
                                             value={value}
                                             type="spinner"
@@ -203,36 +218,45 @@ const IncomeForm = ({ onSubmitForm, onDelete, item, currentMonth, settings }) =>
                                         </Picker>
                                     )}
                                     name="frequency"
-                                    defaultValue={item ? item.incomeFrequency.frequency : "Monthly"}
                                 />
                             </View>
                         </>
                     }
 
-                    {(!item || propagationSelection == 1) &&
-                        <View style={{ paddingTop: 6 }}>
-                            <Text style={[styles.formLabel, styles.labelCenter, { marginTop: 32 }]}>Date Expected</Text>
+                    {(!income || propagationSelection == 1 || !income.incomeId) &&
+                        <View style={styles.fieldContainer}>
+                            <View style={{ flex: 2, justifyContent: 'center' }}>
+                                <Text style={[styles.formLabel, { paddingTop: 12 }]}>Day Expected</Text>
+                            </View>
                             <Controller
                                 control={control}
-                                render={({ onChange, value }) => (
-                                    <RNDateTimePicker
-                                        textColor="#444"
-                                        style={styles.datePicker}
-                                        onChange={(event, date) => onChange(date)}
-                                        value={new Date(value)}
-                                        minimumDate={monthStart}
-                                        maximumDate={monthEnd}
-                                        mode="date"
-                                        display="spinner"
-                                    />
+                                render={({ field: { onChange, value } }) => (
+                                    <Picker
+                                        value={value}
+                                        type="outlined"
+                                        style={styles.pickerContainer}
+                                        itemStyle={styles.pickerItem}
+                                        selectedValue={value}
+                                        onValueChange={value => onChange(value)}
+                                    >
+                                        <Picker.Item label="Select day..." value="" />
+                                        {Object.keys(daysInMonth).map((key) => {
+                                            return (
+                                                <Picker.Item 
+                                                    key={key} 
+                                                    label={daysInMonth[key]+(nth(parseInt(daysInMonth[key])))} 
+                                                    value={daysInMonth[key]} 
+                                                />
+                                            )
+                                        })}
+                                    </Picker>
                                 )}
                                 rules={{ required: true }}
                                 name="expectedDate"
-                                defaultValue={item ? item.expectedDate : monthStart}
                             />
                         </View> 
                     }
-                    {errors.expectedDate && <Text style={styles.hasError}>This is required.</Text>}
+                    { errors.expectedDate && <Text style={styles.hasError}>Date Expected is required.</Text>}
                 </View>
                 <View style={{ paddingTop: 20 }}>
                     <Text style={styles.warningText}>
@@ -244,17 +268,18 @@ const IncomeForm = ({ onSubmitForm, onDelete, item, currentMonth, settings }) =>
                     <Button
                         mode="contained"
                         dark
+                        disabled={isValidating}
                         style={styles.primaryBtn}
                         onPress={handleSubmit(onSubmit)}
                     >
-                        {item ? 'Update' : 'Save'}
+                        {income ? 'Update' : 'Save'}
                     </Button>
-                    {onDelete && item &&
+                    {onDelete && income &&
                         <Button
                             style={{ marginTop: 6 }}
                             color={Constants.errorText}
                             mode="outlined"
-                            onPress={() => onDelete(item)}
+                            onPress={() => onDelete(income)}
                             TouchableComponent={TouchableOpacity}
                         >
                             Delete
@@ -272,15 +297,17 @@ const styles = StyleSheet.create({
         paddingBottom: 50
     },
     pickerContainer: {
-        flex: 3,
-        height: 60, 
-        marginBottom: 5
+        flex: 2,
+        height: 80, 
+        marginBottom: 5,
     },
     pickerItem: {
-        maxHeight: 110
+        // maxHeight: 110
+        height: 105
     },
     datePicker: {
-        height: 95
+        flexGrow: 3,
+        height: 120
     },
     formLabel: {
         fontSize: Constants.fontMedium,
@@ -330,30 +357,4 @@ const styles = StyleSheet.create({
 });
 
 export default IncomeForm;
-
-// <Picker
-//     value={value}
-//     type="outlined"
-//     itemStyle={styles.pickerItem}
-//     style={styles.pickerContainer}
-//     selectedValue={value.toString()}
-//     onValueChange={value => onChange(value ? parseInt(value) : "")}
-//     value={value}
-// >
-//     <Picker.Item label="Select day..." value="" />
-//     {Object.keys(daysInMonth).map((key) => {
-//         return (
-//             <Picker.Item
-//                 key={key + 1}
-//                 label={daysInMonth[key] + (nth(daysInMonth[key]))}
-//                 value={daysInMonth[key]}
-//             />
-//         )
-//     })}
-// </Picker>
-
-// {item && item.incomeType == 1 && dirtyFields.expectedDate &&
-//     <View style={{ flexDirection: 'column' }}>
-//         <Caption> Changes to the date will only apply to this instance. </Caption>
-//     </View>
-// }
+// pattern: /^[0-9]+(\.\d{1,2})?$/ 

@@ -16,7 +16,7 @@ const SCREEN_WIDTH = Dimensions.get('screen').width;
 const WINDOW_WIDTH = Dimensions.get('window').width;
 const WINDOW_HEIGHT = Dimensions.get('window').height;
 
-export default class HomeScreen extends React.Component {
+export default class HomeScreen extends React.PureComponent {
 	state = {
 		isRefreshing: false,
 		moveToActiveMonth: this.context.moveToActiveMonth,
@@ -27,46 +27,38 @@ export default class HomeScreen extends React.Component {
 	static contextType = BudgetContext;
 
 	componentDidMount = async () => {
-		console.log('HOMESCREEN::componentDidMount RAN');
 		try {
+			console.log('componentDidMount')
 			await this.context.fetchBudget();
 			await this.context.fetchMonthDetails(this.context.state.budget.monthlyBudget[this.context.state.firstActiveIdx]);
-
+			AsyncStorage.setItem('currentMonth', JSON.stringify(this.context.state.budget.monthlyBudget[this.context.state.firstActiveIdx]));
 			this.setState({ 
 				settings: this.context.state.budget.settings, 
 				moveToActiveMonth: this.context.state.firstActiveIdx > 0 ? true : false,
-				monthList: this.context.state.budget.monthlyBudget
+				monthList: this.context.state.budget.monthlyBudget,
+				currentMonth: this.context.state.budget.monthlyBudget[this.context.state.firstActiveIdx]
 			});
 		} catch (err) {
 			console.error(err);
 		}
 	}
 
-	componentDidUpdate(navProps, prevProps) {
-		console.log('HOMESCREEN::componentDidUpdate RAN');
+	componentDidUpdate(nextProps, prevProps) {
+		console.log('componentDidUpdate')
 		if ((this.state.currentMonth && !prevProps.currentMonth) || 
 			(prevProps.currentMonth && this.state.currentMonth._id !== prevProps.currentMonth._id)) {
 			this.props.navigation.setOptions({ headerTitle: getMonthLong(this.state.currentMonth.month, new Date(this.state.currentMonth.month).getFullYear()) });
-			this.getMonthDetails();
-			this.setState({monthDetails: this.context.state.currentMonth});
-			AsyncStorage.setItem('currentMonth', JSON.stringify(this.context.state.currentMonth));
 		} else {
-			if (this.state.currentMonth && 
-				(this.context.state.currentMonth.balance !== this.state.currentMonth.balance || 
-					this.context.state.currentMonth.expensesPaidToDate !== this.state.currentMonth.expensesPaidToDate)) {
+			if (this.state.monthDetails && 
+				(this.context.state.currentMonth.balance !== this.state.monthDetails.balance || 
+					this.context.state.currentMonth.expensesPaidToDate !== this.state.monthDetails.expensesPaidToDate)) {
 				this.setState({monthDetails: this.context.state.currentMonth});
 			}
 		}
 	}
 
-	async getMonthDetails() {
-		await this.context.fetchMonthDetails(this.state.currentMonth);
-	}
-
-	scrollToActiveMonth() {
-		if (this.Swiper) {
-			if (this.context.state.firstActiveIdx > 0) this.Swiper.scrollTo(this.context.state.firstActiveIdx)
-		}
+	async getMonthDetails(month) {
+		await this.context.fetchMonthDetails(month);
 	}
 
 	setIndex = (index) => {
@@ -74,14 +66,15 @@ export default class HomeScreen extends React.Component {
 			if (index == this.context.state.firstActiveIdx) {
 				this.setState({ 
 					moveToActiveMonth: false,
-					currentMonth: this.state.monthList[index],
 					monthDetails: this.context.state.currentMonth
 				});
 			}
 		} else {
+			this.getMonthDetails(this.state.monthList[index]);
+			AsyncStorage.setItem('currentMonth', JSON.stringify(this.state.monthList[index]));
 			this.setState({
 				currentMonth: this.state.monthList[index],
-				// monthDetails: null
+				monthDetails: this.context.state.currentMonth
 			});
 		}
 	};
@@ -121,64 +114,66 @@ export default class HomeScreen extends React.Component {
 	}
 
 	render() {
-		if (!this.state.monthList.length) {
+		const { monthList, moveToActiveMonth, monthDetails, isRefreshing } = this.state;
+
+		if (monthList.length < 1) {
 			return <ActivityIndicator animating={true} style={{ flex: 1 }} />;
-		} else {
-			return (
-				<Swiper
-					ref={ref => this.Swiper = ref}
-					index={0}
-					onIndexChanged={this.setIndex.bind(this)}
-					activeDotColor={Constants.primaryColor}
-					buttonWrapperStyle={{ color: Constants.primaryColor }}
-					showsButtons={true}
-					autoplay={this.state.moveToActiveMonth}
-					autoplayTimeout={0}
-					animated={true}
-					removeClippedSubviews={false}
-					nextButton={<Text style={[{marginRight: -8},styles.buttonText]}>›</Text>}
-					prevButton={<Text style={[{marginLeft: -8}, styles.buttonText]}>‹</Text>}
-					loop={false}>
-					{this.state.monthList.map((_item, key) => (
-						<SafeAreaView key={key} style={styles.container}>
-							<PieChart
-								pieData={this.state.monthDetails}
-								defaultSelection="Income"
-							/>
-							<View style={styles.headingContainer}>
-								<View>
-									<Text style={styles.headingText}>Balance</Text>
-									<TotalAmount 
-										value={this.state.monthDetails?.balance}
-										textStyle={styles.subheadingText}
-										alignment="left"
-									/>
-								</View>
-								<View>
-									<Text style={styles.headingText}>Expenses</Text>
-									<TotalAmount 
-										value={this.state.monthDetails?.totalExpenses} 
-										textStyle={styles.subheadingText}
-										alignment="right"
-									/>
-								</View>	
+		} 
+		return (
+			<Swiper
+				ref={ref => this.Swiper = ref}
+				index={0}
+				onIndexChanged={this.setIndex.bind(this)}
+				activeDotColor={Constants.primaryColor}
+				buttonWrapperStyle={{ color: Constants.primaryColor }}
+				showsButtons={true}
+				autoplay={moveToActiveMonth}
+				autoplayTimeout={0}
+				animated={true}
+				removeClippedSubviews={false}
+				nextButton={<Text style={[{marginRight: -8},styles.buttonText]}>›</Text>}
+				prevButton={<Text style={[{marginLeft: -8}, styles.buttonText]}>‹</Text>}
+				loop={false}>
+				{monthList.map((_item, key) => (
+					<SafeAreaView key={key} style={styles.container}>
+						<PieChart
+							pieData={monthDetails}
+							defaultSelection="Income"
+						/>
+						<View style={styles.headingContainer}>
+							<View>
+								<Text style={styles.headingText}>Balance</Text>
+								<TotalAmount 
+									value={monthDetails?.balance}
+									textStyle={styles.subheadingText}
+									alignment="left"
+								/>
 							</View>
-							{this.state.isRefreshing ?
-								<View style={styles.cardContainer}>
-									<ActivityIndicator animating={true} style={{ paddingVertical: 30 }} />
-								</View> : 
-								<ScrollView style={styles.listContainer}>
-									{ this.state.monthDetails?.expenses && 
-										this.state.monthDetails.expenses.map((expns, idx) => {
-										return this.ListItem(expns, idx)
-									})}
-								</ScrollView>
-							}
-						</SafeAreaView>
-					))}
-				</Swiper>
-			)
-		}
+							<View>
+								<Text style={styles.headingText}>Expenses</Text>
+								<TotalAmount 
+									value={monthDetails?.totalExpenses} 
+									textStyle={styles.subheadingText}
+									alignment="right"
+								/>
+							</View>	
+						</View>
+						{isRefreshing ?
+							<View style={styles.cardContainer}>
+								<ActivityIndicator animating={true} style={{ paddingVertical: 30 }} />
+							</View> : 
+							<ScrollView style={styles.listContainer}>
+								{ monthDetails?.expenses && 
+									monthDetails.expenses.map((expns, idx) => {
+									return this.ListItem(expns, idx)
+								})}
+							</ScrollView>
+						}
+					</SafeAreaView>
+				))}
+			</Swiper>
+		)
+		
 	}
 }
 

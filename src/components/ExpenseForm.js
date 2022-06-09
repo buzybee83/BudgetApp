@@ -2,21 +2,36 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableWithoutFeedback, Keyboard, TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useForm, Controller } from "react-hook-form";
-// import { Text } from 'react-native-elements';
+import { MaskService } from 'react-native-masked-text';
 import { TextInput, Switch, Button, Text } from 'react-native-paper';
 import { Constants } from '../constants/Theme';
 import Spacer from '../components/Spacer';
 import { constructDaysInMonth, nth } from '../services/utilHelper';
 
 const ExpenseForm = ({ onSubmitForm, onDelete, expense }) => {
-    const { control, handleSubmit, formState, errors } = useForm({
+    const { control, handleSubmit, formState } = useForm({
         mode: 'onChange',
+        defaultValues: {
+            ...expense,
+            isRecurring: expense ? expense.frequency.isRecurring : true,
+            recurringType: expense ? expense.frequency.recurringType : 'Monthly',
+            dueDay: expense ? new Date(expense.dueDay).getDate().toString() : '',
+            frmtAmount: expense ? MaskService.toMask('money', (expense.amount), {
+                unit: '$',
+                separator: '.',
+                delimiter: ','
+            }) : ''
+        }
     });
     const [canShowRecurringField, setCanShowRecurringField] = useState((expense ? false : true));
     const daysInMonth = constructDaysInMonth();
-    const { isDirty, isSubmitted, isTouched, isValid, isValidating } = formState;
+    const { errors, isDirty, isSubmitted, isTouched, isValid, isValidating } = formState;
     const onSubmit = (data) => {
         if (isDirty && isValid) {
+            data.amount = MaskService.toRawValue('money', (data.frmtAmount), {
+                separator: '.',
+                delimiter: ','
+            });
             onSubmitForm(data, expense);
         }
     };
@@ -27,50 +42,52 @@ const ExpenseForm = ({ onSubmitForm, onDelete, expense }) => {
                     <Spacer size={1} />
                     <Controller
                         control={control}
-                        render={({ onChange, value, ref }) => (
+                        render={({ field: { onChange, value } }) => (
                             <TextInput
                                 label="Description"
                                 mode="outlined"
-                                inputRef={ref}
                                 onChangeText={value => onChange(value)}
                                 value={value}
                             />
                         )}
                         name="name"
                         rules={{ required: true }}
-                        defaultValue={expense ? expense.name : ""}
                     />
-                    {errors.name && <Text style={styles.hasError}>This is required.</Text>}
+                    {errors.name && <Text style={styles.hasError}>Description is required.</Text>}
                     {!errors.name && <Spacer size={1} />}
                     <Controller
                         control={control}
-                        render={({ onChange, value, ref }) => (
+                        render={({ field: { onChange, value } }) => (
                             <TextInput
                                 label="Amount"
                                 mode="outlined"
                                 keyboardType="numeric"
-                                inputRef={ref}
-                                onChangeText={value => onChange(value)}
-                                value={value}
+                                onChangeText={value => value ? onChange(MaskService.toMask('money', (value), {
+                                    unit: '$',
+                                    separator: '.',
+                                    delimiter: ','
+                                })) : onChange(value)}
+                                value={value ? MaskService.toMask('money', (value), {
+                                    unit: '$',
+                                    separator: '.',
+                                    delimiter: ','
+                                }) : ''}
                             />
                         )}
-                        rules={{ required: true, pattern: /^[0-9]+(\.\d{1,2})?$/ }}
-                        name="amount"
-                        defaultValue={expense ? expense.amount.toFixed(2).toString() : ""}
+                        rules={{ required: true }}
+                        name="frmtAmount"
                     />
-                    {errors.amount && errors.amount.type == 'required' &&
-                        <Text style={styles.hasError}>This is required.</Text>
+                    {errors.frmtAmount && errors.frmtAmount.type == 'required' &&
+                        <Text style={styles.hasError}>Amount is required.</Text>
                     }
-                    {errors.amount && errors.amount.type == 'pattern' && !isValidating &&
-                        <Text style={styles.hasError}>Must be a valid number and up to 2 decimal places.</Text>
-                    }
+                   
                     <View style={styles.fieldContainer}>
                         <View style={{ flexDirection: 'row' }}>
                             <Text style={[styles.formLabel, { marginTop: 32 }]}> Due Day</Text>
                         </View>
                         <Controller
                             control={control}
-                            render={({ onChange, value, ref }) => (
+                            render={({ field: { onChange, value } }) => (
                                 <Picker
                                     value={value}
                                     type="outlined"
@@ -84,7 +101,7 @@ const ExpenseForm = ({ onSubmitForm, onDelete, expense }) => {
                                         return (
                                             <Picker.Item 
                                                 key={key} 
-                                                label={daysInMonth[key]+(nth(daysInMonth[key]))} 
+                                                label={daysInMonth[key]+(nth(parseInt(daysInMonth[key])))} 
                                                 value={daysInMonth[key]} 
                                             />
                                         )
@@ -93,16 +110,15 @@ const ExpenseForm = ({ onSubmitForm, onDelete, expense }) => {
                             )}
                             rules={{ required: true }}
                             name="dueDay"
-                            defaultValue={expense ? new Date(expense.dueDay).getDate().toString() : ""}
                         />
                     </View>
-                    {errors.dueDay && <Text style={styles.hasError}>This is required.</Text>}
+                    {errors.dueDay && <Text style={styles.hasError}>Due Day is required.</Text>}
                     { !expense &&
                         <View style={[styles.fieldContainer, { paddingTop: 30 }]}>
                             <Text style={[styles.formLabel, { flex: 2 }]}> Recurring Expense </Text>
                             <Controller
                                 control={control}
-                                render={({ onChange, value }) => (
+                                render={({ field: { onChange, value } }) => (
                                     <Switch
                                         containerStyle={{ flex: 2, paddingRight: 24 }}
                                         style={{ marginRight: '2%' }}
@@ -127,7 +143,7 @@ const ExpenseForm = ({ onSubmitForm, onDelete, expense }) => {
                             </View>
                             <Controller
                                 control={control}
-                                render={({ onChange, value }) => (
+                                render={({ field: { onChange, value } }) => (
                                     <Picker
                                         value={value}
                                         type="outlined"
@@ -223,23 +239,4 @@ const styles = StyleSheet.create({
 });
 
 export default ExpenseForm;
-
-// <View style={[styles.fieldContainer, { paddingTop: 40 }]}>
-//     <Text style={[styles.formLabel, { flex: 2 }]}>Split between paychecks </Text>
-//     <Controller
-//         control={control}
-//         render={({ onChange, value }) => (
-//             <Switch
-//                 containerStyle={{ flex: 2 }}
-//                 style={{ marginRight: '2%' }}
-//                 value={value}
-//                 color={Constants.tintColor}
-//                 mode="outlined"
-//                 onValueChange={value => onChange(value)}
-//             />
-//         )}
-//         name="split"
-//         defaultValue={expense ? expense.split : false}
-//     />
-// </View>
 

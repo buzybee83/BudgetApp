@@ -13,6 +13,10 @@ const expenseReducer = (prevState, action) => {
 			return { ...prevState, lastUpdated: new Date() };
 		case 'DELETED_EXPENSE':
 			return { ...prevState, expenses: prevState.expenses.filter(x => x._id !== action.payload.id) };
+		case 'HAS_LOADING_ERROR':
+			return { ...prevState, loadingErrorMessage: action.payload, income: [] };
+		case 'CLEAR_LOADING_ERROR':
+			return { ...prevState, loadingErrorMessage: null };
 		case 'HAS_ERROR':
 			return { ...prevState, errorMessage: action.payload };
 		case 'CLEAR_ERROR':
@@ -40,7 +44,7 @@ const createExpense = dispatch => async (data) => {
 			type: 'HAS_ERROR',
 			payload: errorMssg
 		});
-		console.error('CREATION ERROR ==== \n', err)
+		console.log('CREATION ERROR ==== \n', err)
 	}
 };
 
@@ -57,7 +61,7 @@ const updateExpense = dispatch => async (expense) => {
 			type: 'HAS_ERROR',
 			payload: errorMssg
 		});
-		console.error('UPDATE ERROR - ', err)
+		console.log('UPDATE ERROR - ', err)
 	}
 };
 
@@ -81,7 +85,7 @@ const deleteExpense = dispatch => async (id) => {
 			type: 'HAS_ERROR',
 			payload: errorMssg
 		});
-		console.error('DELETE ERROR - ', err)
+		console.log('DELETE ERROR - ', err)
 	}
 };
 
@@ -95,9 +99,13 @@ const deleteManyExpenses = dispatch => async (ids) => {
 			type: 'HAS_ERROR',
 			payload: errorMssg
 		});
-		console.error('DELETE ERROR - ', err)
+		console.log('DELETE ERROR - ', err)
 	}
 };
+
+const clearLoadingError = dispatch => () => {
+	dispatch({ type: 'CLEAR_LOADING_ERROR' });
+}
 
 const clearError = dispatch => () => {
 	dispatch({ type: 'CLEAR_ERROR' });
@@ -112,7 +120,8 @@ export const { Provider, Context } = createDataContext(
 		updateExpense, 
 		deleteExpense, 
 		deleteManyExpenses, 
+		clearLoadingError,
 		clearError
 	},
-	{ expenses: null, errorMessage: '', lastUpdated: null }
+	{ expenses: null, errorMessage: null, lastUpdated: null, loadingErrorMessage: null }
 )

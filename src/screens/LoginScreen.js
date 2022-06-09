@@ -1,4 +1,4 @@
-import React, { useEffect, useContext } from 'react';
+import React, { useEffect, useContext, useState } from 'react';
 import { StyleSheet, Text, KeyboardAvoidingView, View, Platform } from 'react-native';
 import { useFocusEffect, StackActions } from '@react-navigation/native';
 import { Card, Avatar } from 'react-native-paper';
@@ -11,6 +11,7 @@ import Spacer from '../components/Spacer';
 import WaveShape from '../components/WaveShape';
 
 const LoginScreen = ({ navigation }) => {
+    const [doneLoading, setDoneLoading] = useState(false)
     const { state, login, clearErrorMessage } = useContext(AuthContext);
     // const headerHeight = useHeaderHeight();
 
@@ -26,8 +27,12 @@ const LoginScreen = ({ navigation }) => {
             navigation.dispatch(
                 StackActions.replace('MainFlow', {screen: state.route})
             );
+        } else {
+            setDoneLoading(true);
         }
     }, [state.route]);
+
+    if (!doneLoading) return null
 
     return (
         <View  style={styles.container}>

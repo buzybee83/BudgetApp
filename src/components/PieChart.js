@@ -56,16 +56,16 @@ const PieChart = ({ pieData, defaultSelection }) => {
             }
         }, {
             key: 2,
-            label: 'Paid to Date',
+            label: 'Total Paid',
             value: pieData.expensesPaidToDate,
             onPress: () => setSelectedSlice({ 
-                label: 'Paid to Date', 
+                label: 'Total Paid', 
                 value: pieData.expensesPaidToDate
             }),
             svg: { fill: '#0066ff' },
             arc: { 
-                outerRadius: selectedSlice.label === 'Paid to Date' ? '100%' : '95%', 
-                padAngle: selectedSlice.label === 'Paid to Date' ? 0.06 : 0.01
+                outerRadius: selectedSlice.label === 'Total Paid' ? '100%' : '95%', 
+                padAngle: selectedSlice.label === 'Total Paid' ? 0.06 : 0.01
             }
         }, {
             key: 3,

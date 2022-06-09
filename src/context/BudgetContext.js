@@ -83,7 +83,6 @@ const fetchMonthDetails = dispatch => async (month) => {
 			expenses: response.data?.expenses,
 			income: response.data?.income
 		}
-		console.log('CURRENT MONTH RESULT>>', result)
 		dispatch({ type: 'MONTH_DETAILS', payload: result });
 	} catch (err) {
 		console.warn('ERROR FETCHING MONTH DETAILS :: ', err)
