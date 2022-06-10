@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
-import { InputIcon } from '../components/Icons';
 import { Constants } from '../constants/Theme';
-import Spacer from '../components/Spacer';
 // import { State } from 'react-native-gesture-handler';
 
-function AuthForm({ type, errorMessage, submitButtonText, onSubmit }) {
+function AuthForm({ type, errorMessage, submitButtonText, onSubmit, clearError }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [isLoading, setLoading] = useState(false);
+    const [hasErrors, setErrors] = useState(false);
 
     useFocusEffect(
         React.useCallback(() => {
@@ -22,6 +21,7 @@ function AuthForm({ type, errorMessage, submitButtonText, onSubmit }) {
                 setFirstName('');
                 setLastName('');
                 setLoading(false);
+                setErrors(false);
             };
         }, [])
     );
@@ -31,60 +31,64 @@ function AuthForm({ type, errorMessage, submitButtonText, onSubmit }) {
     },[errorMessage])
 
     const submitForm = async () => {
-        setLoading(true);
-        if (type == 'Signup') {
-            await onSubmit({ firstName, lastName, email, password });
-        } else {
-            await onSubmit({ email, password });
+        if (errorMessage) {
+            clearError();
+        }
+        if (hasErrors) {
+            setErrors(false);
+        }
+        switch (type) {
+            case 'Signup':
+                if (!firstName || !lastName || !email || !password) {
+                    setErrors(true);
+                    return
+                } 
+                setLoading(true);
+                await onSubmit({ firstName, lastName, email, password });
+                break;
+            default: 
+                if (!email || !password) {
+                    setErrors(true);
+                    return
+                } 
+                setLoading(true);
+                await onSubmit({ email, password });
+                break;
         }
     }
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View>
-                {type == 'Signup' &&
-                    <>
+        <View>
+            {type == 'Signup' &&
+                <>
+                    <View style={{ position: 'relative', paddingBottom: 26}}>
                         <TextInput
                             label="First Name"
-                            leftIcon={
-                                <InputIcon
-                                    class="leftIcon"
-                                    name="md-person"
-                                    size={24}
-                                />
-                            }
+                            left={<TextInput.Icon name="account" color={Constants.midGrey}/>}
                             mode="outlined"
                             value={firstName}
                             onChangeText={setFirstName}
                             autoCorrect={false}
                         />
-                        <Spacer size={2} />
+                        { hasErrors && !firstName && <Text style={Constants.hasError}>First Name is required</Text>}
+                    </View>
+                    <View style={{ position: 'relative', paddingBottom: 26, marginVertical: 8}}>
                         <TextInput
                             label="Last Name"
-                            leftIcon={
-                                <InputIcon
-                                    class="leftIcon"
-                                    name="md-person"
-                                    size={24}
-                                />
-                            }
+                            left={<TextInput.Icon name="account" color={Constants.midGrey}/>}
                             mode="outlined"
                             value={lastName}
                             onChangeText={setLastName}
                             autoCorrect={false}
                         />
-                        <Spacer size={2} />
-                    </>
-                }
+                        { hasErrors && !lastName && <Text style={Constants.hasError}>Last Name is required</Text>}
+                    </View>
+                </>
+            }
+            <View style={{ position: 'relative', paddingBottom: 26, marginVertical: 8}}>
                 <TextInput
                     label="Email"
-                    leftIcon={
-                        <InputIcon
-                            class="leftIcon"
-                            name="md-mail"
-                            size={23}
-                        />
-                    }
+                    left={<TextInput.Icon name="email" color={Constants.midGrey}/>}
                     mode="outlined"
                     placeholder="sample@domain.com"
                     value={email}
@@ -94,16 +98,12 @@ function AuthForm({ type, errorMessage, submitButtonText, onSubmit }) {
                     keyboardType="email-address"
                     autoCorrect={false}
                 />
-                <Spacer size={7} />
+                { hasErrors && !email && <Text style={Constants.hasError}>Email is required</Text>}
+            </View>
+            <View style={{ position: 'relative', paddingBottom: 26, marginTop: 8}}>
                 <TextInput
                     label="Password"
-                    leftIcon={
-                        <InputIcon
-                            class="leftIcon"
-                            name="md-lock-closed"
-                            size={23}
-                        />
-                    }
+                    left={<TextInput.Icon name="lock" color={Constants.midGrey}/>}
                     mode="outlined"
                     value={password}
                     onChangeText={setPassword}
@@ -112,27 +112,22 @@ function AuthForm({ type, errorMessage, submitButtonText, onSubmit }) {
                     clearTextOnFocus={type !== 'Signup'}
                     secureTextEntry
                 />
-                <Spacer size={1} />
-                <Text style={{ color: Constants.errorText }}>{errorMessage}</Text>
-                {errorMessage !== undefined && <Spacer size={4} />}
-                <Button
-                    style={Constants.buttonDesign}
-                    mode="contained"
-                    color="white"
-                    onPress={() => !isLoading && submitForm()}      
-                >
-                    { isLoading ? 
-                        <ActivityIndicator animating={true} color="white" /> :
-                        <Text style={Constants.buttonTextLarge}>{submitButtonText}</Text>
-                    }
-                </Button>
+                { hasErrors && !password && <Text style={Constants.hasError}>Password is required</Text>}
             </View>
-        </TouchableWithoutFeedback>
+            { errorMessage ? <Text style={{ color: Constants.errorText, marginBottom: 16}}>{errorMessage}</Text> : null}
+            <Button
+                style={Constants.buttonDesign}
+                mode="contained"
+                color="white"
+                onPress={() => !isLoading && submitForm()}      
+            >
+                { isLoading ? 
+                    <ActivityIndicator animating={true} color="white" /> :
+                    <Text style={Constants.buttonTextLarge}>{submitButtonText}</Text>
+                }
+            </Button>
+        </View>
     );
 }
 
 export default AuthForm;
-
-
-
-
