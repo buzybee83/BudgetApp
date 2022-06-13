@@ -26,7 +26,7 @@ const LoginScreen = ({ navigation }) => {
         if (state.errorMessage) clearErrorMessage();
         if (state.route && state.route !== 'Auth') {
             navigation.dispatch(
-                StackActions.replace('MainFlow', {screen: state.route})
+                StackActions.replace(`${state.route}`)
             );
         } else {
             setDoneLoading(true);

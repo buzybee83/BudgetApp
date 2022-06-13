@@ -24,7 +24,8 @@ const PieChart = ({ pieData, defaultSelection }) => {
                 }
             }
             setInProgress(false);
-        }
+        } 
+        
     },[pieData]);
 
     useEffect(() => {

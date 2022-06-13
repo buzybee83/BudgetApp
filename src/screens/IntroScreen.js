@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { StackActions } from '@react-navigation/native';
 import update from 'react-addons-update';
-import { Text, Button } from 'react-native-paper';
+import { Text } from 'react-native-paper';
+import { Button } from 'react-native-elements';
 import { Ionicons } from '@expo/vector-icons';
 import AppIntroSlider from 'react-native-app-intro-slider';
 
@@ -46,7 +47,6 @@ export default class IntroScreen extends React.Component {
 				slides: update(this.state.slides, { [this.state.currentSlide]: { value: { $set: newValue } } })
 			});
 		}
-
 		// Check for Optional Slides & add in place if parent field was enabled
 		if (this.state.slides[this.state.currentSlide].optionalSlides) {
 			let indexRef = this.state.currentSlide + 1;
@@ -121,14 +121,7 @@ export default class IntroScreen extends React.Component {
 			case false:
 				/* REGULAR FLOW */
 				return (
-					<View
-						style={[
-							styles.slide,
-							{
-								backgroundColor: item.bgColor,
-							}
-						]}
-					>
+					<View style={[styles.slide, {	backgroundColor: item.bgColor }]}>
 						<Text style={styles.title}>{item.title}</Text>
 						<Image
 							style={{ width: Layout.window.width, maxHeight: 400 }}
@@ -217,7 +210,7 @@ export default class IntroScreen extends React.Component {
 		await this.context.createBudget(DeconstructSlides(this.state.slides, introStatus));
 		if (this.context.state.budget) {
 			this.props.navigation.dispatch(
-                StackActions.replace('Main', { screen: 'Home' })
+                StackActions.replace('MainFlow')
             );
 		}
 	};

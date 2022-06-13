@@ -17,7 +17,7 @@ const Income = [{
   section: 'Let\'s Configure Your Income',
   order: 1,
   field: 'firstPayDate',
-  label: 'Set Your Next Paycheck Date',
+  label: 'When is Your Next Paycheck?',
   type: 'date',
   format: 'MM/DD/YY'
 }, {

@@ -46,14 +46,14 @@ const login = dispatch => async ({ email, password }) => {
 		const response = await API.post('api/login', { email, password });
 		await AsyncStorage.setItem('currentUser', JSON.stringify(response.data));
 		if (response.data.budgetId) {
-			dispatch({ type: 'LOGIN', payload: response.data.token, route: 'Main' });
+			dispatch({ type: 'LOGIN', payload: response.data.token, route: 'MainFlow' });
 		} else {
 			dispatch({ type: 'LOGIN', payload: response.data.token, route: 'Intro' });
 		}
 	} catch (err) {
 		const errorMssg = err.response && err.response.data.error ?
 			err.response.data.error :
-			`Something went wrong while tryign to log you in, please try later. ${err}`;
+			`Something went wrong while trying to log you in, please try later. ${err}`;
 		dispatch({
 			type: 'HAS_ERROR',
 			payload: errorMssg
@@ -71,7 +71,7 @@ const bootstrapAuthAsync = dispatch => async () => {
 		let currentUser = await AsyncStorage.getItem('currentUser');
 		currentUser = JSON.parse(currentUser);
 		if (currentUser.budgetId) {
-			dispatch({ type: 'RESTORE_TOKEN', payload: currentUser.token, route: 'Main' });
+			dispatch({ type: 'RESTORE_TOKEN', payload: currentUser.token, route: 'MainFlow' });
 		} else {
 			dispatch({ type: 'RESTORE_TOKEN', payload: currentUser.token, route: 'Intro'});
 		}

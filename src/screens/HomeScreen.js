@@ -49,9 +49,9 @@ export default class HomeScreen extends React.PureComponent {
 			(prevProps.currentMonth && this.state.currentMonth._id !== prevProps.currentMonth._id)) {
 			this.props.navigation.setOptions({ headerTitle: getMonthLong(this.state.currentMonth.month, new Date(this.state.currentMonth.month).getFullYear()) });
 		} else {
-			if (this.state.monthDetails && 
+			if (!this.state.monthDetails || (this.state.monthDetails && 
 				(this.context.state.currentMonth.balance !== this.state.monthDetails.balance || 
-					this.context.state.currentMonth.expensesPaidToDate !== this.state.monthDetails.expensesPaidToDate)) {
+					this.context.state.currentMonth.expensesPaidToDate !== this.state.monthDetails.expensesPaidToDate))) {
 				this.setState({monthDetails: this.context.state.currentMonth});
 			}
 		}

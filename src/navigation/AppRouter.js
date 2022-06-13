@@ -6,8 +6,9 @@ import { Provider as BudgetProvider } from '../context/BudgetContext';
 
 //IMPORT ROUTES
 import AuthLoading from '../screens/AuthLoading';
+import IntroScreen from '../screens/IntroScreen';
 import AuthStack from './AuthStack';
-import IntroStack from './IntroStack';
+// import IntroStack from './IntroStack';
 import HomeStack from './HomeStack';
 
 //APP STACK
@@ -23,6 +24,9 @@ export default function AppRouter() {
                     screenOptions={{
                         "headerShown": false
                     }}
+                    options={{
+                        headerLeft: null
+                    }}
                 >
                     <AppStack.Screen
                         name="Auth"
@@ -30,7 +34,7 @@ export default function AppRouter() {
                     />
                     <AppStack.Screen
                         name="Intro"
-                        component={IntroStack}
+                        component={IntroScreen}
                     />
                     <AppStack.Screen
                         options={{

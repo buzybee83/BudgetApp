@@ -1,16 +1,19 @@
 import React from 'react';
-import { StyleSheet, View, Switch } from 'react-native';
-import { Text } from 'react-native-paper';
-import { TextInputMask } from 'react-native-masked-text';
+import { StyleSheet, View } from 'react-native';
+import { Text, Switch, TextInput } from 'react-native-paper';
+import { TextInputMask, MaskService } from 'react-native-masked-text';
 import { Picker } from '@react-native-picker/picker';
 import RNDateTimePicker from '@react-native-community/datetimepicker';
 
-
 import { Constants } from '../constants/Theme';
 
-const getRawValue = (formattedVal) => {
-	return parseFloat(formattedVal.replace(/[$,]/g, ''));
+const getRawValue = (formattedVal, type) => {
+	return MaskService.toRawValue(type, (formattedVal), {
+		separator: '.',
+		delimiter: ','
+	});
 }
+
 
 const FieldTemplate = ({ item, action, childIndex }) => {
 	switch (item.type) {
@@ -34,20 +37,19 @@ const FieldTemplate = ({ item, action, childIndex }) => {
 					style={{ alignItems: 'center' }}
 				>
 					<Text style={[styles.label, { marginBottom: 16 }]}> {item.label} </Text>
-					<TextInputMask
+					<TextInput
+						mode="outlined"
+						keyboardType="numeric"
 						style={styles.maskedInputStyle}
-						type={'money'}
-						value={item.value}
-						options={{
-							separator: '.',
-							delimiter: ',',
-							unit: '$',
-							suffixUnit: ''
-						}}
-						onChangeText={(value) => {
+						onChangeText={ value => {
 							item.value = value;
-							action(getRawValue(value));
+							action(getRawValue(value, 'money'));
 						}}
+						value={item.value ? MaskService.toMask('money', (item.value), {
+							unit: '$',
+							separator: '.',
+							delimiter: ','
+						}) : ''}
 					/>
 				</View>
 			);
@@ -105,21 +107,25 @@ const FieldTemplate = ({ item, action, childIndex }) => {
 					style={{ alignItems: 'center' }}
 				>
 					<Text style={[styles.label, { marginBottom: 16 }]}> {item.label} </Text>
-					<TextInputMask
+					<TextInput
+						mode="outlined"
+						keyboardType="numeric"
 						style={styles.maskedInputStyle}
-						value={item.value}
-						type={'only-numbers'}
-						options={{
+						onChangeText={ value => {
+							const fmtvalue = value ? MaskService.toMask('only-numbers', (value), {
+								unit: '',
+								separator: '.',
+								delimiter: ','
+							}) : '';
+							item.value = fmtvalue;
+							console.log('Masked>',value)
+							action(value);
+						}}
+						value={item.value ? MaskService.toMask('only-numbers', (item.value), {
 							unit: '',
 							separator: '.',
-							delimiter: ',',
-							suffixUnit: ''
-						}}
-						onChangeText={(value) => {
-							item.value = value;
-							if (childIndex !== undefined) action(getRawValue(value), childIndex);
-							else action(getRawValue(value));
-						}}
+							delimiter: ','
+						}) : ''}
 					/>
 				</View>
 			);
@@ -183,4 +189,19 @@ const styles = StyleSheet.create({
 	},
 });
 
+/* <TextInputMask
+						style={styles.maskedInputStyle}
+						type={'money'}
+						value={item.value}
+						options={{
+							separator: '.',
+							delimiter: ',',
+							unit: '$',
+							suffixUnit: ''
+						}}
+						onChangeText={(value) => {
+							item.value = value;
+							action(getRawValue(value));
+						}}
+					/> */
 

@@ -16,7 +16,7 @@ import AccountScreen from '../screens/AccountScreen';
 import { Constants } from '../constants/Theme';
 
 const BottomTab = createBottomTabNavigator();
-const INITIAL_ROUTE_NAME = 'Overview';
+const INITIAL_ROUTE_NAME = 'Home';
 // const Stack = createStackNavigator();
 
 // const HomeTabs = () => {
@@ -36,7 +36,7 @@ export default function HomeStack({ navigation }) {
 					}}
 				>
 					<BottomTab.Screen
-						name="Overview"
+						name="Home"
 						component={HomeScreen}
 						options={{
 							tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} name="home" />,
