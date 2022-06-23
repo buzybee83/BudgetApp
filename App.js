@@ -1,6 +1,6 @@
+import 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
-import { AppRegistry, View } from 'react-native';
 import { Provider as PaperProvider, DefaultTheme } from "react-native-paper";
 import { NavigationContainer } from '@react-navigation/native';
 import * as SplashScreen from 'expo-splash-screen';

@@ -73,7 +73,7 @@ const IncomeScreen = ({ navigation }) => {
 			if (state.loadingErrorMessage) {
 				clearLoadingError();
 			}
-			checkCurrentMonth(currentMonth, 'Income', navigation, setCurrentMonth);
+			checkCurrentMonth();
 		});
 		return unsubscribe;
 	}, [navigation]);
