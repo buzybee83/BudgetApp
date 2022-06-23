@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, SafeAreaView, ScrollView, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, SafeAreaView, ScrollView, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ActivityIndicator, Chip } from 'react-native-paper';
+import { ActivityIndicator, Chip, Menu, Provider } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 // import update from 'react-addons-update';
 import Swiper from 'react-native-swiper'
@@ -22,7 +22,8 @@ export default class HomeScreen extends React.PureComponent {
 		moveToActiveMonth: this.context.moveToActiveMonth,
 		settings: null,
 		monthList: [],
-		currentMonth: null
+		currentMonth: null,
+		menuVisible: false
 	};
 	static contextType = BudgetContext;
 
@@ -32,8 +33,8 @@ export default class HomeScreen extends React.PureComponent {
 			await this.context.fetchBudget();
 			await this.context.fetchMonthDetails(this.context.state.budget.monthlyBudget[this.context.state.firstActiveIdx]);
 			AsyncStorage.setItem('currentMonth', JSON.stringify(this.context.state.budget.monthlyBudget[this.context.state.firstActiveIdx]));
-			this.setState({ 
-				settings: this.context.state.budget.settings, 
+			this.setState({
+				settings: this.context.state.budget.settings,
 				moveToActiveMonth: this.context.state.firstActiveIdx > 0 ? true : false,
 				monthList: this.context.state.budget.monthlyBudget,
 				currentMonth: this.context.state.budget.monthlyBudget[this.context.state.firstActiveIdx]
@@ -45,14 +46,14 @@ export default class HomeScreen extends React.PureComponent {
 
 	componentDidUpdate(nextProps, prevProps) {
 		console.log('componentDidUpdate')
-		if ((this.state.currentMonth && !prevProps.currentMonth) || 
+		if ((this.state.currentMonth && !prevProps.currentMonth) ||
 			(prevProps.currentMonth && this.state.currentMonth._id !== prevProps.currentMonth._id)) {
 			this.props.navigation.setOptions({ headerTitle: getMonthLong(this.state.currentMonth.month, new Date(this.state.currentMonth.month).getFullYear()) });
 		} else {
-			if (!this.state.monthDetails || (this.state.monthDetails && 
-				(this.context.state.currentMonth.balance !== this.state.monthDetails.balance || 
+			if (!this.state.monthDetails || (this.state.monthDetails &&
+				(this.context.state.currentMonth.balance !== this.state.monthDetails.balance ||
 					this.context.state.currentMonth.expensesPaidToDate !== this.state.monthDetails.expensesPaidToDate))) {
-				this.setState({monthDetails: this.context.state.currentMonth});
+				this.setState({ monthDetails: this.context.state.currentMonth });
 			}
 		}
 	}
@@ -64,7 +65,7 @@ export default class HomeScreen extends React.PureComponent {
 	setIndex = (index) => {
 		if (this.state.moveToActiveMonth) {
 			if (index == this.context.state.firstActiveIdx) {
-				this.setState({ 
+				this.setState({
 					moveToActiveMonth: false,
 					monthDetails: this.context.state.currentMonth
 				});
@@ -84,13 +85,13 @@ export default class HomeScreen extends React.PureComponent {
 		const iconColor = item.isPaid ? Constants.successColor : Constants.iconDefault;
 		const itemStyle = item.isPaid ? styles.itemStyle : {};
 		return (
-			<View key={idx} style={[styles.listContent, {backgroundColor: colors[idx % colors.length]}]}>
+			<View key={idx} style={[styles.listContent, { backgroundColor: colors[idx % colors.length] }]}>
 				<Text>{item.name}</Text>
-				<View style={itemStyle}>	
-					{ item.isPaid &&
+				<View style={itemStyle}>
+					{item.isPaid &&
 						<Chip textStyle={{ fontSize: Constants.fontXxSmall, position: 'absolute', top: -8, margin: 'auto' }}
-							style={{ 
-								marginRight: 8, 
+							style={{
+								marginRight: 8,
 								backgroundColor: iconColor,
 								height: 18,
 								width: 40,
@@ -103,9 +104,10 @@ export default class HomeScreen extends React.PureComponent {
 						</Chip>
 					}
 					<Text>
-						{item.amount.toLocaleString("en-US",{
-							style: "currency", 
-							currency: "USD"})
+						{item.amount.toLocaleString("en-US", {
+							style: "currency",
+							currency: "USD"
+						})
 						}
 					</Text>
 				</View>
@@ -113,67 +115,107 @@ export default class HomeScreen extends React.PureComponent {
 		);
 	}
 
+	closeMenu = () => {
+		this.setState({ menuVisible: false });
+	}
+
+	openMenu = () => {
+		this.setState({ menuVisible: true });
+	}
+
+	HomeMenu = () => {
+		return (
+			<Menu
+				style={{ marginTop: -55 }}
+				contentStyle={{ backgroundColor: '#fbfbfb'}}
+				visible={this.state.menuVisible}
+				onDismiss={this.closeMenu}
+				anchor={<TouchableOpacity
+					style={{  alignSelf: 'flex-start', marginTop: 5 }}
+					onPress={this.openMenu}
+				>
+					<MaterialIcons
+						size={30}
+						color="white"
+						name="more-vert"
+					/>
+				</TouchableOpacity>}
+			>
+				<Menu.Item onPress={() => { }} title="Detail View" titleStyle={{color: Constants.darkGrey }}/>
+				<Menu.Item onPress={() => { }} title="Add Savings" titleStyle={{color: Constants.darkGrey }}/>
+			</Menu>
+		)
+	}
+
 	render() {
 		const { monthList, moveToActiveMonth, monthDetails, isRefreshing } = this.state;
 
 		if (monthList.length < 1) {
 			return <ActivityIndicator animating={true} style={{ flex: 1 }} />;
-		} 
+		}
 		return (
 			<Swiper
 				ref={ref => this.Swiper = ref}
 				index={0}
 				onIndexChanged={this.setIndex.bind(this)}
 				activeDotColor={Constants.primaryColor}
+				dotStyle={{ marginBottom: -25}}
+				activeDotStyle={{ marginBottom: -25, transform: [{ scaleX: 1.3 },{ scaleY: 1.3 }]}}
 				buttonWrapperStyle={{ color: Constants.primaryColor }}
-				showsButtons={true}
+				showsButtons={false}
 				autoplay={moveToActiveMonth}
 				autoplayTimeout={0}
 				animated={true}
 				removeClippedSubviews={false}
-				nextButton={<Text style={[{marginRight: -8},styles.buttonText]}>›</Text>}
-				prevButton={<Text style={[{marginLeft: -8}, styles.buttonText]}>‹</Text>}
 				loop={false}>
 				{monthList.map((_item, key) => (
-					<SafeAreaView key={key} style={styles.container}>
-						<PieChart
-							pieData={monthDetails}
-							defaultSelection="Income"
-						/>
-						<View style={styles.headingContainer}>
-							<View>
-								<Text style={styles.headingText}>Balance</Text>
-								<TotalAmount 
-									value={monthDetails?.balance}
-									textStyle={styles.subheadingText}
-									alignment="left"
+					<View key={key} style={styles.container}>
+						<Provider>
+							<View style={{ zIndex: 2}}>
+								<this.HomeMenu></this.HomeMenu>
+							</View>
+							<View style={{marginTop: -25, zIndex: 1}}>
+								<PieChart
+									pieData={monthDetails}
+									defaultSelection="Income"
 								/>
 							</View>
-							<View>
-								<Text style={styles.headingText}>Expenses</Text>
-								<TotalAmount 
-									value={monthDetails?.totalExpenses} 
-									textStyle={styles.subheadingText}
-									alignment="right"
-								/>
-							</View>	
-						</View>
-						{isRefreshing ?
-							<View style={styles.cardContainer}>
-								<ActivityIndicator animating={true} style={{ paddingVertical: 30 }} />
-							</View> : 
-							<ScrollView style={styles.listContainer}>
-								{ monthDetails?.expenses && 
-									monthDetails.expenses.map((expns, idx) => {
-									return this.ListItem(expns, idx)
-								})}
-							</ScrollView>
-						}
-					</SafeAreaView>
+							<View style={styles.headingContainer}>
+								<View>
+									<Text style={styles.headingText}>Balance</Text>
+									<TotalAmount
+										value={monthDetails?.balance}
+										textStyle={styles.subheadingText}
+										alignment="left"
+									/>
+								</View>
+								<View style={{ flexDirection: 'column', alignItems: 'flex-end'}}>
+									<Text style={styles.headingText}>Expenses</Text>
+									<TotalAmount
+										value={monthDetails?.totalExpenses}
+										textStyle={styles.subheadingText}
+										alignment="right"
+									/>
+								</View>
+							</View>
+							{isRefreshing ?
+								<View style={styles.cardContainer}>
+									<ActivityIndicator animating={true} style={{ paddingVertical: 30 }} />
+								</View> :
+								<ScrollView style={styles.listContainer}>
+									{monthDetails?.expenses &&
+										monthDetails.expenses.map((expns, idx) => {
+											return this.ListItem(expns, idx)
+										})
+									}
+								</ScrollView>
+							}
+						</Provider>
+					</View>
 				))}
 			</Swiper>
 		)
-		
+
 	}
 }
 
@@ -182,7 +224,8 @@ const styles = StyleSheet.create({
 		...DarkTheme,
 		flex: 1,
 		alignContent: 'stretch',
-		justifyContent: 'space-between'
+		justifyContent: 'space-between',
+		position: 'relative'
 	},
 	flatlistContainer: {
 		width: (SCREEN_WIDTH + 1),
@@ -205,7 +248,7 @@ const styles = StyleSheet.create({
 	headingText: {
 		fontWeight: Constants.fontWeightHeavy,
 		color: Constants.whiteColor,
-		fontSize: Constants.fontLarge
+		fontSize: Constants.fontSmall
 	},
 	subheadingText: {
 		fontWeight: Constants.fontWeightMedium,
@@ -235,7 +278,7 @@ const styles = StyleSheet.create({
 	},
 	itemStyle: {
 		width: '40%',
-		flexDirection: 'row', 
+		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignSelf: 'flex-end'
 	},
@@ -245,8 +288,9 @@ const styles = StyleSheet.create({
 		// borderColor: '#444'
 	}
 });
-
-{/* export default HomeScreen 
+// nextButton={<Text style={[{ marginRight: -8 }, styles.buttonText]}>›</Text>}
+// prevButton={<Text style={[{ marginLeft: -8 }, styles.buttonText]}>‹</Text>}
+/* export default HomeScreen 
 <ScrollView
 		refreshControl={
 			<RefreshControl
@@ -268,8 +312,8 @@ const styles = StyleSheet.create({
 			tintColor={Constants.noticeText}
 			refreshing={isRefreshing}
 			onRefresh={refreshBudgetData}
-		/> */}
-	
+		/> */
+
 
 	// <ScrollView>
 	// 			<FlatList
@@ -287,7 +331,7 @@ const styles = StyleSheet.create({
 	// 							title={getMonthLong(item.month)}
 	// 							containerStyle={styles.cardContent}
 	// 						>
-	// 							{ isRefreshing ? 
+	// 							{ isRefreshing ?
 	// 								<ActivityIndicator animating={true} style={{paddingVertical: 30}}/> :
 	// 								<Text>Month Overview</Text>
 	// 							}
